@@ -35,7 +35,7 @@ Details that span files:
 
 - Conversation history is injected as text into the **system prompt** (not the `messages` array). Sessions are in-memory only and keep the last `MAX_HISTORY` exchanges (`config.py`).
 - `AIGenerator` returns `response.content[0].text`, assuming the first content block is text. It also sends `temperature: 0`. Both matter if you change `ANTHROPIC_MODEL`: newer models that think by default or reject non-default sampling parameters will break this code.
-- New tools subclass `Tool` in `search_tools.py` and are registered on `ToolManager` in `RAGSystem.__init__`. Expose a `last_sources` list if the tool's results should appear as UI sources.
+- New tools subclass `Tool` in `search_tools.py` and are registered on `ToolManager` in `RAGSystem.__init__`. Expose a `last_sources` list if the tool's results should appear as UI sources. Each source is a `{"text", "link"}` dict (`Source` model in `app.py`); the frontend renders it as a new-tab link when `link` is set.
 
 ### Vector store (`vector_store.py`)
 

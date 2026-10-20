@@ -125,7 +125,7 @@ function addMessage(content, type, sources = null, isWelcome = false) {
         html += `
             <details class="sources-collapsible">
                 <summary class="sources-header">Sources</summary>
-                <div class="sources-content">${sources.join(', ')}</div>
+                <div class="sources-content">${sources.map(renderSource).join(', ')}</div>
             </details>
         `;
     }
@@ -142,6 +142,16 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Render a source as a link to its lesson video (opens in a new tab), or plain text if it has no link
+function renderSource(source) {
+    const text = escapeHtml(source.text);
+    if (source.link && /^https?:\/\//i.test(source.link)) {
+        const href = escapeHtml(source.link).replace(/"/g, '&quot;');
+        return `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+    }
+    return text;
 }
 
 // Removed removeMessage function - no longer needed since we handle loading differently
