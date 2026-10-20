@@ -241,17 +241,59 @@ header h1 {
 }
 
 .sources-content {
-    padding: 0 0.5rem 0.25rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 0.25rem 0.5rem 0.5rem;
     color: var(--text-secondary);
 }
 
-.sources-content a {
-    color: var(--primary-color);
+.source-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.7rem;
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    line-height: 1.35;
     text-decoration: none;
+    transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.sources-content a:hover {
-    text-decoration: underline;
+a.source-item:hover {
+    background: var(--surface-hover);
+    border-color: var(--primary-color);
+}
+
+a.source-item:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--focus-ring);
+    border-color: var(--primary-color);
+}
+
+.source-icon {
+    flex-shrink: 0;
+    font-size: 0.65rem;
+    color: #60a5fa;
+}
+
+.source-text {
+    flex: 1;
+}
+
+.source-external {
+    flex-shrink: 0;
+    color: var(--text-secondary);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+a.source-item:hover .source-external,
+a.source-item:focus-visible .source-external {
+    opacity: 1;
 }
 
 /* Markdown formatting styles */
@@ -455,6 +497,7 @@ header h1 {
 }
 
 /* Sidebar Headers */
+.new-chat-button,
 .stats-header,
 .suggested-header {
     font-size: 0.875rem;
@@ -471,11 +514,20 @@ header h1 {
     letter-spacing: 0.5px;
 }
 
+.new-chat-button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+}
+
+.new-chat-button:focus,
 .stats-header:focus,
 .suggested-header:focus {
     color: var(--primary-color);
 }
 
+.new-chat-button:hover,
 .stats-header:hover,
 .suggested-header:hover {
     color: var(--primary-color);

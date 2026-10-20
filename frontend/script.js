@@ -3,9 +3,10 @@ const API_URL = '/api';
 
 // Global state
 let currentSessionId = null;
+let activeRequest = null; // AbortController for the query in flight, if any
 
 // DOM elements
-let chatMessages, chatInput, sendButton, totalCourses, courseTitles;
+let chatMessages, chatInput, sendButton, newChatButton, totalCourses, courseTitles;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -13,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chatMessages = document.getElementById('chatMessages');
     chatInput = document.getElementById('chatInput');
     sendButton = document.getElementById('sendButton');
+    newChatButton = document.getElementById('newChatButton');
     totalCourses = document.getElementById('totalCourses');
     courseTitles = document.getElementById('courseTitles');
     
@@ -28,7 +30,8 @@ function setupEventListeners() {
     chatInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') sendMessage();
     });
-    
+    newChatButton.addEventListener('click', startNewChat);
+
     
     // Suggested questions
     document.querySelectorAll('.suggested-item').forEach(button => {
@@ -59,6 +62,9 @@ async function sendMessage() {
     chatMessages.appendChild(loadingMessage);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
+    const controller = new AbortController();
+    activeRequest = controller;
+
     try {
         const response = await fetch(`${API_URL}/query`, {
             method: 'POST',
@@ -68,7 +74,8 @@ async function sendMessage() {
             body: JSON.stringify({
                 query: query,
                 session_id: currentSessionId
-            })
+            }),
+            signal: controller.signal
         });
 
         if (!response.ok) throw new Error('Query failed');
@@ -85,10 +92,13 @@ async function sendMessage() {
         addMessage(data.answer, 'assistant', data.sources);
 
     } catch (error) {
+        // Request was cancelled by starting a new chat; the old messages are already gone
+        if (error.name === 'AbortError') return;
         // Replace loading message with error
         loadingMessage.remove();
         addMessage(`Error: ${error.message}`, 'assistant');
     } finally {
+        if (activeRequest === controller) activeRequest = null;
         chatInput.disabled = false;
         sendButton.disabled = false;
         chatInput.focus();
@@ -125,7 +135,7 @@ function addMessage(content, type, sources = null, isWelcome = false) {
         html += `
             <details class="sources-collapsible">
                 <summary class="sources-header">Sources</summary>
-                <div class="sources-content">${sources.map(renderSource).join(', ')}</div>
+                <div class="sources-content">${uniqueSources(sources).map(renderSource).join('')}</div>
             </details>
         `;
     }
@@ -144,14 +154,25 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Render a source as a link to its lesson video (opens in a new tab), or plain text if it has no link
+// Drop repeated sources (search often returns several chunks from the same lesson)
+function uniqueSources(sources) {
+    const seen = new Set();
+    return sources.filter(source => {
+        const key = `${source.text}|${source.link || ''}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
+// Render a source as a card linking to its lesson video (opens in a new tab), or a plain card if it has no link
 function renderSource(source) {
-    const text = escapeHtml(source.text);
+    const text = `<span class="source-text">${escapeHtml(source.text)}</span>`;
     if (source.link && /^https?:\/\//i.test(source.link)) {
         const href = escapeHtml(source.link).replace(/"/g, '&quot;');
-        return `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+        return `<a class="source-item" href="${href}" target="_blank" rel="noopener noreferrer"><span class="source-icon" aria-hidden="true">▶</span>${text}<span class="source-external" aria-hidden="true">↗</span></a>`;
     }
-    return text;
+    return `<div class="source-item">${text}</div>`;
 }
 
 // Removed removeMessage function - no longer needed since we handle loading differently
@@ -160,6 +181,24 @@ async function createNewSession() {
     currentSessionId = null;
     chatMessages.innerHTML = '';
     addMessage('Welcome to the Course Materials Assistant! I can help you with questions about courses, lessons and specific content. What would you like to know?', 'assistant', null, true);
+}
+
+// Start a fresh conversation without reloading the page
+function startNewChat() {
+    const oldSessionId = currentSessionId;
+
+    // Cancel any query still waiting, so its answer doesn't land in the new chat
+    if (activeRequest) activeRequest.abort();
+
+    createNewSession();
+    chatInput.value = '';
+    chatInput.focus();
+
+    // Free the old session's history on the server
+    if (oldSessionId) {
+        fetch(`${API_URL}/session/${encodeURIComponent(oldSessionId)}`, { method: 'DELETE' })
+            .catch(error => console.error('Error deleting session:', error));
+    }
 }
 
 // Load course statistics
